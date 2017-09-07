@@ -1,0 +1,9 @@
+{
+    "name": "docxmerge",
+    "type": "library",
+    "autoload": {
+        "psr-4": {
+            "DocxMerge\\": "src"
+        }
+    }
+}
