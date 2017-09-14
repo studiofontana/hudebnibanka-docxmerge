@@ -23,28 +23,56 @@ class DocxMerge {
      * @param $outDocxFilePath
      * @return int
      */
-    public function merge( $docxFilesArray, $outDocxFilePath ) {
-        if ( count($docxFilesArray) == 0 ) {
+    public function merge( $docxFilesArray, $outDocxFilePath) {
+        if ( count($docxFilesArray) == 0 || count($docxFilesArray) == 1 ) {
             // No files to merge
             return -1;
         }
 
-        if ( substr( $outDocxFilePath, -5 ) != ".docx" ) {
-            $outDocxFilePath .= ".docx";
+        $toMerge = [
+            $docxFilesArray[0],
+            $docxFilesArray[1]
+        ];
+
+        $zip = new clsTbsZip();
+
+        // Open the first document
+        $zip->Open($toMerge[0]);
+        $content1 = $zip->FileRead('word/document.xml');
+        $zip->Close();
+
+        // Extract the content of the first document
+        $p = strpos($content1, '<w:body');
+        if ($p===false) exit("Tag <w:body> not found in document 1.");
+        $p = strpos($content1, '>', $p);
+        $content1 = substr($content1, $p+1);
+        $p = strpos($content1, '</w:body>');
+        if ($p===false) exit("Tag </w:body> not found in document 1.");
+        $content1 = substr($content1, 0, $p);
+
+        // Insert into the second document
+        $zip->Open($toMerge[1]);
+        $content2 = $zip->FileRead('word/document.xml');
+        $p = strpos($content2, '</w:body>');
+        if ($p===false) exit("Tag </w:body> not found in document 2.");
+        $content2 = substr_replace($content2, $content1, $p, 0);
+        $zip->FileReplace('word/document.xml', $content2, TBSZIP_STRING);
+
+        $continueMerge = [
+            $toMerge[1] . '.docx'
+        ];
+        foreach($docxFilesArray as $key => $file) {
+            if($key <= 1) continue;
+            $continueMerge[] = $file;
         }
 
-        if ( !copy( $docxFilesArray[0], $outDocxFilePath ) ) {
-            // Cannot create file
-            return -2;
+        if(count($continueMerge) > 1) {
+            $zip->Flush(TBSZIP_FILE, $toMerge[1] . '.docx');
+
+            return $this->merge($continueMerge, $outDocxFilePath);
         }
 
-        $docx = new Docx( $outDocxFilePath );
-        for( $i=1; $i<count( $docxFilesArray ); $i++ ) {
-            $docx->addFile( $docxFilesArray[$i], "part".$i.".docx", "rId10".$i );
-        }
-
-        $docx->flush();
-
+        $zip->Flush(TBSZIP_FILE, $outDocxFilePath);
         return 0;
     }
 
