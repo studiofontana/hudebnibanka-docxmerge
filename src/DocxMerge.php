@@ -26,6 +26,7 @@ class DocxMerge {
     public function merge( $docxFilesArray, $outDocxFilePath) {
         if ( count($docxFilesArray) == 0 || count($docxFilesArray) == 1 ) {
             // No files to merge
+            copy($docxFilesArray[0], $outDocxFilePath);
             return -1;
         }
 
